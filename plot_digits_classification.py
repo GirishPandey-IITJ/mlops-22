@@ -10,6 +10,12 @@ data = digits.images.reshape((n_samples,-1))
 g_ls = [0.2,0.09,0.05,0.025]
 c_ls = [0.2,0.5,0.9,1,1.5]
 
+params = {}
+params['gamma'] = g_ls
+params['C'] = c_ls
+
+from utils import getall_h_comb
+h_pcomb = getall_h_params_comb(params)
 hyper_prm = [{'gamma':g,'C':c} for g in g_ls for c in c_ls ]
 
 
