@@ -7,19 +7,19 @@ digits = datasets.load_digits()
 n_samples = len(digits.target)
 data = digits.images.reshape((n_samples,-1))
 
-g_ls = [0.2,0.09,0.05,0.025]
-c_ls = [0.2,0.5,0.9,1,1.5]
+g_ls = [0.025]
+c_ls = [1,1.5]
 
 params = {}
 params['gamma'] = g_ls
 params['C'] = c_ls
 
-from utils import getall_h_comb
-h_pcomb = getall_h_params_comb(params)
+from utils import distinct_op
+#h_pcomb = getall_h_params_comb(params)
 hyper_prm = [{'gamma':g,'C':c} for g in g_ls for c in c_ls ]
 
-
-split_l = [0.2,0.3]
+k = []
+split_l = [0.2]
 for i in split_l:
 
     dv_acc, train_acc, test_acc = 0,0,0
@@ -42,6 +42,7 @@ for i in split_l:
     tracc_ls = []
     dvacc_ls = []
     tsacc_ls = []
+
 
     for cur_h_params in hyper_prm:
 
@@ -67,6 +68,8 @@ for i in split_l:
         predicted_dev = clf.predict(x_dev)
         predicted_train = clf.predict(x_train)
         predicted_test = clf.predict(x_test)
+        k = predicted_test
+
 
         # 3.Compute the accuracy on the validation set
         cur_acc = metrics.accuracy_score(y_pred = predicted_dev, y_true=y_dev)
@@ -96,14 +99,18 @@ for i in split_l:
     dct = {'G': g_ls, 'C': c_ls, 'train_acc': tracc_ls, 'dev_acc': dvacc_ls
     , 'test_acc': tsacc_ls}
 
-    df = pd.DataFrame.from_dict(dct)
 
-    print(df)
+
+    #df = pd.DataFrame.from_dict(dct)
+
+    #print(df)
 
     print("Best hyperparameters: ",str(best_h_params))
     print("Best train acc: ",str(train_acc))
     print("Best dev acc: ",str(dv_acc))
     print("Best test acc: ",str(test_acc))
     print("\n")
-    print(df.describe())
+    #print(df.describe())
     print("\n\n")
+baised_output_set = distinct_op(k)
+print(baised_output_set)
