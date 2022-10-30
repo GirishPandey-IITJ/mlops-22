@@ -1,116 +1,75 @@
-from sklearn import datasets,svm,metrics
+from sklearn import datasets,svm,metrics,tree
 from sklearn.model_selection import train_test_split
-
+import pdb
 import pandas as pd
-
+import numpy as np
+from joblib import dump,load
 digits = datasets.load_digits()
-n_samples = len(digits.target)
+label = digits.target
+n_samples = len(label)
 data = digits.images.reshape((n_samples,-1))
 
-g_ls = [0.025]
-c_ls = [1,1.5]
-
-params = {}
-params['gamma'] = g_ls
-params['C'] = c_ls
-
-from utils import distinct_op
+g_ls = [0.05,0.025,0.01]
+c_ls = [1,1.5,2]
+from utilsGirish import (get_h_prm,h_comb,tune_save)
 #h_pcomb = getall_h_params_comb(params)
-hyper_prm = [{'gamma':g,'C':c} for g in g_ls for c in c_ls ]
+svm_p = {}
+svm_p['gamma'] = g_ls
+svm_p['C'] = c_ls
+svm_hyper_p = get_h_prm(svm_p)
 
-k = []
-split_l = [0.2]
-for i in split_l:
+d = [10,20,30,40]
 
-    dv_acc, train_acc, test_acc = 0,0,0
-    best_model = None
-    best_h_params = None
-    train_frac = 1-i
-    test_frac = i/2
-    dev_frac = i/2
-    print("train_frac : " , train_frac , " test_frac : "  , test_frac, "dev_frac : " , dev_frac)
-    dev_test_frac = 1-train_frac
-    x_train, x_dev_test,y_train,y_dev_test = train_test_split(data , 
-        digits.target , test_size = dev_test_frac,shuffle = True)
+dt_p = {}
+dt_p['max_depth'] = d
+dt_hyper_p = get_h_prm(dt_p)
 
-    x_test, x_dev,y_test,y_dev = train_test_split(x_dev_test ,
-        y_dev_test, test_size = (dev_frac)/(dev_test_frac) ,
-        shuffle = True)
-    ls = []
-    g_ls = []
-    c_ls = []
-    tracc_ls = []
-    dvacc_ls = []
-    tsacc_ls = []
+svm_dt_hyper = {'dt':dt_hyper_p , 'svm':svm_hyper_p}
+#print(svm_dt_hyper)
+measure = [metrics.accuracy_score , metrics.mean_absolute_error]
+hyper_ms = metrics.accuracy_score
 
+folds = 5
 
-    for cur_h_params in hyper_prm:
+report = {}
+f_train = 0.7
+f_test = 0.15
+f_dev = 0.15
+for k in range(folds):
+    dev_test_frac = 0.3
+    x_train, x_dev_test, y_train, y_dev_test = train_test_split(
+        data, label, test_size=dev_test_frac, shuffle=True
+    )
+    x_test, x_dev, y_test, y_dev = train_test_split(
+        x_dev_test, y_dev_test, test_size=(f_dev) / dev_test_frac, shuffle=True
+    )
+    alg = {"svm":svm.SVC() , "dt":tree.DecisionTreeClassifier()}
+    for name in alg:
+        mdl = alg[name]
+        print("Run [{}] hyper_p tuning {}".format(k,name))
+        cur_model_path = tune_save(mdl,x_train,y_train,x_dev,y_dev,hyper_ms,
+        svm_dt_hyper[name],model_path=None)
 
-        
-        #PART-4: Define the model
+        top_model = load(cur_model_path)
+        prd = top_model.predict(x_test)
+        if not name in report:
+            report[name] = []
+        report[name].append(
+        {m.__name__:m(y_pred=prd, y_true=y_test) for m in measure}
+        )
+        cm_dt = pd.DataFrame(metrics.confusion_matrix(y_true = y_test , y_pred = prd))
+        print("Confusion Matrix for label comparison\n",cm_dt)
+        print(
+            f"Classification report for classifier {mdl}:\n"
+            f"{metrics.classification_report(y_test, prd)}\n"
+        )
 
-        # Create a classifier: a support vector classifier
-        clf = svm.SVC() #support vector machine
+k = report
+svm_acc = [k['svm'][i]['accuracy_score'] for i in range(5)]
+dt_acc = [k['dt'][i]['accuracy_score'] for i in range(5)]
+d = {'run':[1,2,3,4,5],'svm_acc':svm_acc , 'dt_acc':dt_acc}
+dt_svm = pd.DataFrame(d).set_index('run')
 
-        #PART-4.1: Setting up the hyperparameters
-        hyper_params = cur_h_params
-        clf.set_params(**hyper_params)
+print(dt_svm , "\n")
 
-        #PART-6: Train the model
-        # Learn the digits on the train subset
-
-        # 2.Train the model for every combination of hyperparameters
-        clf.fit(x_train, y_train)
-
-        #print(cur_h_params)
-
-        #PART-7: Get dev set predictions
-        predicted_dev = clf.predict(x_dev)
-        predicted_train = clf.predict(x_train)
-        predicted_test = clf.predict(x_test)
-        k = predicted_test
-
-
-        # 3.Compute the accuracy on the validation set
-        cur_acc = metrics.accuracy_score(y_pred = predicted_dev, y_true=y_dev)
-        cur_acc_train = metrics.accuracy_score(y_pred = predicted_train, y_true=y_train)
-        cur_acc_test = metrics.accuracy_score(y_pred = predicted_test, y_true=y_test)
-
-        
-        g_ls.append(cur_h_params['gamma'])
-        c_ls.append(cur_h_params['C'])
-        tracc_ls.append(cur_acc_train)
-        tsacc_ls.append(cur_acc_test)
-        dvacc_ls.append(cur_acc)
-
-
-        # 4.Identify the best combination of hyperparameters for which validation set accuracy is highest
-        if cur_acc > dv_acc:
-            dv_acc = cur_acc
-            best_h_params = cur_h_params
-            #print("Current best accuracy with : " + str(best_h_params))
-            #print("New best validation accuracy :" + str(best_acc))
-        if cur_acc_train > train_acc:
-            train_acc= cur_acc_train
-        
-        if cur_acc_test > test_acc:
-            test_acc = cur_acc_test
-
-    dct = {'G': g_ls, 'C': c_ls, 'train_acc': tracc_ls, 'dev_acc': dvacc_ls
-    , 'test_acc': tsacc_ls}
-
-
-
-    #df = pd.DataFrame.from_dict(dct)
-
-    #print(df)
-
-    print("Best hyperparameters: ",str(best_h_params))
-    print("Best train acc: ",str(train_acc))
-    print("Best dev acc: ",str(dv_acc))
-    print("Best test acc: ",str(test_acc))
-    print("\n")
-    #print(df.describe())
-    print("\n\n")
-baised_output_set = distinct_op(k)
-print(baised_output_set)
+print("\nMean\n" , dt_svm.mean() , "\n\n" , "Standard Deviation\n" , dt_svm.std() )
