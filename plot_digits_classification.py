@@ -8,8 +8,13 @@ digits = datasets.load_digits()
 label = digits.target
 n_samples = len(label)
 data = digits.images.reshape((n_samples,-1))
-
-g_ls = [0.05,0.025,0.01]
+print(list(data[45]))
+l = []
+for i in data[45]:
+    z = str(i)
+    l.append(z)
+print(l)
+'''g_ls = [0.05,0.025,0.01]
 c_ls = [1,1.5,2]
 from utilsGirish import (get_h_prm,h_comb,tune_save)
 #h_pcomb = getall_h_params_comb(params)
@@ -71,5 +76,6 @@ d = {'run':[1,2,3,4,5],'svm_acc':svm_acc , 'dt_acc':dt_acc}
 dt_svm = pd.DataFrame(d).set_index('run')
 
 print(dt_svm , "\n")
+'''
 
 print("\nMean\n" , dt_svm.mean() , "\n\n" , "Standard Deviation\n" , dt_svm.std() )
