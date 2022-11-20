@@ -1,8 +1,9 @@
 from sklearn.model_selection import train_test_split
 from joblib import dump
+from sklearn import datasets
 from sklearn import svm, tree,metrics
 import pdb
-
+old_rs = 0
 def combs(param_vals, param_name, combs_so_far):
     new_combs_so_far = []        
     for c in combs_so_far:        
@@ -12,6 +13,15 @@ def combs(param_vals, param_name, combs_so_far):
             new_combs_so_far.append(cc)
     return new_combs_so_far
 
+def diff_random_state(rs):
+    digits = datasets.load_digits()
+    label = digits.target
+    n_samples = len(label)
+    data = digits.images.reshape((n_samples,-1))
+    xtr, xts, ytr, yts = train_test_split(
+        data, label, test_size=0.2, shuffle=True, random_state = rs
+    )
+    return xtr, xts, ytr, yts
 
 def get_h_prm(prm):
     h_prm = [{}]
@@ -70,6 +80,7 @@ def tune_save(
 
     if model_path == None:
         model_path = top_model_name
+    
     dump(top_model,model_path)
 
     print("Best hyperparameters were:" + str(top_h_prm))
@@ -77,6 +88,10 @@ def tune_save(
     print("Best Metric on Dev was:{}".format(top_mtr))
 
     return model_path
+
+
+def macro_f1(y_true, y_pred, pos_label=1):
+    return f1_score(y_true, y_pred, pos_label=pos_label, average='macro', zero_division='warn')
 
 def h_comb(prm):
     h_param = [{}]

@@ -1,0 +1,3 @@
+Accuracy: 236
+Macro f1 score: 0.8669537636183895
+Model saved at: dt_max_depth=30.joblib
